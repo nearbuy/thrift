@@ -54,16 +54,14 @@ class ThriftClientSpec < Spec::ExampleGroup
     end
 
     it "should increment the sequence id when sending messages" do
-      pending "it seems sequence ids are completely ignored right now" do
-        @prot.should_receive(:write_message_begin).with('testMessage',  MessageTypes::CALL, 0).ordered
-        @prot.should_receive(:write_message_begin).with('testMessage2', MessageTypes::CALL, 1).ordered
-        @prot.should_receive(:write_message_begin).with('testMessage3', MessageTypes::CALL, 2).ordered
-        @prot.stub!(:write_message_end)
-        @prot.stub!(:trans).and_return mock("trans").as_null_object
-        @client.send_message('testMessage', mock("args class").as_null_object)
-        @client.send_message('testMessage2', mock("args class").as_null_object)
-        @client.send_message('testMessage3', mock("args class").as_null_object)        
-      end
+      @prot.should_receive(:write_message_begin).with('testMessage',  MessageTypes::CALL, 0).ordered
+      @prot.should_receive(:write_message_begin).with('testMessage2', MessageTypes::CALL, 1).ordered
+      @prot.should_receive(:write_message_begin).with('testMessage3', MessageTypes::CALL, 2).ordered
+      @prot.stub!(:write_message_end)
+      @prot.stub!(:trans).and_return mock("trans").as_null_object
+      @client.send_message('testMessage', mock("args class").as_null_object)
+      @client.send_message('testMessage2', mock("args class").as_null_object)
+      @client.send_message('testMessage3', mock("args class").as_null_object)
     end
 
     it "should receive a test message" do

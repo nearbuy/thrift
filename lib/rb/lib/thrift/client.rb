@@ -22,10 +22,11 @@ module Thrift
     def initialize(iprot, oprot=nil)
       @iprot = iprot
       @oprot = oprot || iprot
-      @seqid = 0
+      @seqid = -1
     end
 
     def send_message(name, args_class, args = {})
+      @seqid += 1
       @oprot.write_message_begin(name, MessageTypes::CALL, @seqid)
       data = args_class.new
       args.each do |k, v|
