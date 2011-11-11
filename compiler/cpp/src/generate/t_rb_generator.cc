@@ -53,7 +53,16 @@ class t_rb_generator : public t_oop_generator {
   {
     (void) parsed_options;
     (void) option_string;
-    out_dir_base_ = "gen-rb";
+    std::map<std::string, std::string>::const_iterator iter;
+
+    iter = parsed_options.find("eventmachine");
+    gen_eventmachine_ = (iter != parsed_options.end());
+
+    if (gen_eventmachine_) {
+      out_dir_base_ = "gen-rb.eventmachine";
+    } else {
+      out_dir_base_ = "gen-rb";
+    }
   }
 
   /**
@@ -200,6 +209,11 @@ class t_rb_generator : public t_oop_generator {
   void end_namespace(std::ofstream&, std::vector<std::string>);
 
  private:
+
+  /**
+   * True if we should generate EventMachine friendly RPC services.
+   */
+  bool gen_eventmachine_;
 
   /**
    * File streams
@@ -1191,5 +1205,6 @@ void t_rb_generator::generate_rb_union_validator(std::ofstream& out,
   indent(out) << "end" << endl << endl;
 }
 
-THRIFT_REGISTER_GENERATOR(rb, "Ruby", "")
+THRIFT_REGISTER_GENERATOR(rb, "Ruby",
+"    eventmachine:    Generate eventmachine compatible code.\n")
 
