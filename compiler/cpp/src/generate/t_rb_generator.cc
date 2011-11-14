@@ -729,7 +729,7 @@ void t_rb_generator::generate_service(t_service* tservice) {
   indent(f_service_) << "module " << capitalize(tservice->get_name()) << endl;
   indent_up();
 
-  // Generate the three main parts of the service (well, two for now in PHP)
+  // Generate the three main parts of the service
   generate_service_client(tservice);
   generate_service_server(tservice);
   generate_service_helpers(tservice);
@@ -801,9 +801,13 @@ void t_rb_generator::generate_service_client(t_service* tservice) {
     "class Client" << extends_client << endl;
   indent_up();
 
-  indent(f_service_) <<
-    "include ::Thrift::Client" << endl << endl;
-
+  if (gen_eventmachine_) {
+    indent(f_service_) <<
+      "include ::Thrift::AsyncClient" << endl << endl;
+  } else {
+    indent(f_service_) <<
+      "include ::Thrift::Client" << endl << endl;
+  }
   // Generate client method implementations
   vector<t_function*> functions = tservice->get_functions();
   vector<t_function*>::const_iterator f_iter;
@@ -817,6 +821,14 @@ void t_rb_generator::generate_service_client(t_service* tservice) {
     indent(f_service_) <<
       "def " << function_signature(*f_iter) << endl;
     indent_up();
+      if (gen_eventmachine_) {
+        indent(f_service_) << "@seqid += 1" << endl;
+        if (!(*f_iter)->is_oneway()) {
+          indent(f_service_) <<
+            "d = @callbacks[@seqid] = @deferrable_class.new" << endl;
+        }
+      }
+
       indent(f_service_) <<
         "send_" << funname << "(";
 
@@ -833,11 +845,24 @@ void t_rb_generator::generate_service_client(t_service* tservice) {
 
       if (!(*f_iter)->is_oneway()) {
         f_service_ << indent();
-        if (!(*f_iter)->get_returntype()->is_void()) {
-          f_service_ << "return ";
+        if (gen_eventmachine_) {
+          f_service_ << "return d" << endl;
+        } else {
+          if (!(*f_iter)->get_returntype()->is_void()) {
+            f_service_ << "return ";
+          }
+          f_service_ <<
+            "recv_" << funname << "()" << endl;
         }
-        f_service_ <<
-          "recv_" << funname << "()" << endl;
+      } else {
+        if (gen_eventmachine_) {
+          f_service_ <<
+            indent() << "d = @deferrable_class.new" << endl;
+          f_service_ <<
+            indent() << "d.succeed" << endl;
+          f_service_ <<
+            indent() << "return d" << endl;
+        }
       }
     indent_down();
     indent(f_service_) << "end" << endl;
@@ -867,39 +892,88 @@ void t_rb_generator::generate_service_client(t_service* tservice) {
       t_function recv_function((*f_iter)->get_returntype(),
                                string("recv_") + (*f_iter)->get_name(),
                                &noargs);
+
       // Open function
-      f_service_ <<
-        endl <<
-        indent() << "def " << function_signature(&recv_function) << endl;
+      f_service_ << endl;
+      if (gen_eventmachine_) {
+        f_service_ <<
+          indent() << "def recv_" << (*f_iter)->get_name() <<
+            "(iprot, mtype, rseqid)" << endl;
+      } else {
+        f_service_ <<
+          indent() << "def " << function_signature(&recv_function) << endl;
+      }
       indent_up();
 
       // TODO(mcslee): Validate message reply here, seq ids etc.
 
-      f_service_ <<
-        indent() << "result = receive_message(" << resultname << ")" << endl;
+      if (gen_eventmachine_) {
+        f_service_ <<
+          indent() << "d = @callbacks.delete(rseqid)" << endl <<
+          indent() << "if mtype == Thrift::MessageTypes::EXCEPTION" << endl;
+
+        indent_up();
+        f_service_ <<
+          indent() << "x = ApplicationException.new" << endl <<
+          indent() << "x.read(iprot)" << endl <<
+          indent() << "iprot.read_message_end" << endl <<
+          indent() << "d.fail(x)" << endl <<
+          indent() << "return" << endl;
+        indent_down();
+        f_service_ <<
+          indent() << "end" << endl;
+
+        f_service_ <<
+          indent() << "result = " << resultname << ".new" << endl <<
+          indent() << "result.read(iprot)" << endl <<
+          indent() << "iprot.read_message_end" << endl;
+      } else {
+        f_service_ <<
+          indent() << "result = receive_message(" << resultname << ")" << endl;
+      }
 
       // Careful, only return _result if not a void function
       if (!(*f_iter)->get_returntype()->is_void()) {
-        f_service_ <<
-          indent() << "return result.success unless result.success.nil?" << endl;
+        if (gen_eventmachine_) {
+          f_service_ <<
+            indent() << "return d.succeed(result.success) unless result.success.nil?" << endl;
+        } else {
+          f_service_ <<
+            indent() << "return result.success unless result.success.nil?" << endl;
+        }
       }
 
       t_struct* xs = (*f_iter)->get_xceptions();
       const std::vector<t_field*>& xceptions = xs->get_members();
       vector<t_field*>::const_iterator x_iter;
       for (x_iter = xceptions.begin(); x_iter != xceptions.end(); ++x_iter) {
-        indent(f_service_) <<
-          "raise result." << (*x_iter)->get_name() <<
+        if (gen_eventmachine_) {
+          indent(f_service_) <<
+            "d.fail(result." << (*x_iter)->get_name() <<
+            ") unless result." << (*x_iter)->get_name() << ".nil?" << endl;
+        } else {
+          indent(f_service_) <<
+            "raise result." << (*x_iter)->get_name() <<
             " unless result." << (*x_iter)->get_name() << ".nil?" << endl;
+        }
       }
 
       // Careful, only return _result if not a void function
       if ((*f_iter)->get_returntype()->is_void()) {
+        if (gen_eventmachine_) {
+          indent(f_service_) <<
+            "d.succeed" << endl;
+        }
         indent(f_service_) <<
           "return" << endl;
       } else {
-        f_service_ <<
-          indent() << "raise ::Thrift::ApplicationException.new(::Thrift::ApplicationException::MISSING_RESULT, '" << (*f_iter)->get_name() << " failed: unknown result')" << endl;
+        if (gen_eventmachine_) {
+          f_service_ <<
+            indent() << "d.fail(::Thrift::ApplicationException.new(::Thrift::ApplicationException::MISSING_RESULT, '" << (*f_iter)->get_name() << " failed: unknown result'))" << endl;
+        } else {
+          f_service_ <<
+            indent() << "raise ::Thrift::ApplicationException.new(::Thrift::ApplicationException::MISSING_RESULT, '" << (*f_iter)->get_name() << " failed: unknown result')" << endl;
+        }
       }
 
       // Close function
