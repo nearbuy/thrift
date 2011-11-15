@@ -25,7 +25,7 @@ require 'spec/rake/spectask'
 THRIFT = '../../compiler/cpp/thrift'
 
 task :default => [:gem]
-task :spec => [:'gen-rb', :build_ext, :realspec]
+task :spec => [:'gen-rb', :'gen-rb.eventmachine', :build_ext, :realspec]
 
 Spec::Rake::SpecTask.new(:realspec) do |t|
   t.spec_files = FileList['spec/**/*_spec.rb']
@@ -51,10 +51,19 @@ namespace :'gen-rb' do
     dir = File.dirname(__FILE__) + '/benchmark'
     sh THRIFT, '--gen', 'rb', '-o', dir, "#{dir}/Benchmark.thrift"
   end
-  
+
   task :'debug_proto' do
     sh "mkdir", "-p", "test/debug_proto"
     sh THRIFT, '--gen', 'rb', "-o", "test/debug_proto", "../../test/DebugProtoTest.thrift"
+  end
+end
+
+desc 'Compile the .thrift files for event_machine specs'
+task :'gen-rb.eventmachine' => [:'gen-rb.eventmachine:spec']
+namespace :'gen-rb.eventmachine' do
+  task :'spec' do
+    dir = File.dirname(__FILE__) + '/spec'
+    sh THRIFT, '--gen', 'rb:eventmachine', '-o', dir, "#{dir}/ThriftSpec.thrift"
   end
 end
 
@@ -101,8 +110,8 @@ task :install => [:gem] do
   end
 end
 
-CLEAN.include [ 'ext/*.{o,bundle,so,dll}', 'mkmf.log', 'ext/mkmf.log', 'ext/Makefile', 
-  'Gemfile.lock', '.bundle', 
-  'spec/gen-rb', 'test', 'benchmark/gen-rb',
+CLEAN.include [ 'ext/*.{o,bundle,so,dll}', 'mkmf.log', 'ext/mkmf.log', 'ext/Makefile',
+  'Gemfile.lock', '.bundle',
+  'spec/gen-rb', 'spec/gen-rb.eventmachine', 'test', 'benchmark/gen-rb',
   'pkg', 'thrift-*.gem'
 ]

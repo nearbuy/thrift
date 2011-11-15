@@ -37,6 +37,7 @@
 #
 
 namespace rb SpecNamespace
+namespace rb.eventmachine SpecEventMachineNamespace
 
 struct Hello {
   1: string greeting = "hello world"
