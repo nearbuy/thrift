@@ -135,6 +135,19 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
       end
     end
 
+    it "should not return any values for void functions" do
+      EM.run do
+        client_class = SpecEventMachineNamespace::NonblockingService::Client
+        con = Thrift::EventMachineTransport.connect(client_class, 'localhost', @port)
+        con.callback do |client|
+          client.sleep(0.1).callback do |a|
+            a.should == nil
+            EM.stop_event_loop
+          end
+        end
+      end
+    end
+
     it "should set oneway functions to success state immediately" do
       tick_count = 0
       # track tick count so we can say if something happened in the same
