@@ -30,5 +30,6 @@ Gem::Specification.new do |s|
   s.add_development_dependency "rake"
   s.add_development_dependency "rspec", "1.3.2"
   s.add_development_dependency "mongrel"
+  s.add_development_dependency "eventmachine", "~> 0.12.10"
 end
 
