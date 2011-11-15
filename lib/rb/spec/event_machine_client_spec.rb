@@ -106,5 +106,34 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
         end
       end
     end
+
+    it "should process events asynchronously" do
+      EM.run do
+        client_class = SpecEventMachineNamespace::NonblockingService::Client
+        con = Thrift::EventMachineTransport.connect(client_class, 'localhost', @port)
+        con.callback do |client|
+          testcount = 3
+          order = []
+
+          done = lambda do
+            testcount -= 1
+
+            if testcount == 0
+              order.should == [3,1,2]
+              EM.stop_event_loop
+            end
+          end
+
+          test_sleep = lambda do |secs, index|
+            client.sleep(secs).callback { order << index; done.call }
+          end
+
+          test_sleep.call(0.3, 1)
+          test_sleep.call(0.5, 2)
+          test_sleep.call(0.1, 3)
+        end
+      end
+    end
+
   end
 end
