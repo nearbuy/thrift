@@ -183,9 +183,19 @@ class t_rb_generator : public t_oop_generator {
   std::string type_to_enum(t_type* ttype);
 
 
+  static bool is_valid_namespace(const std::string& sub_namespace) {
+    return sub_namespace == "eventmachine";
+  }
 
-  std::vector<std::string> ruby_modules(t_program* p) {
+  std::vector<std::string> ruby_modules(t_program* p, bool gen_eventmachine) {
     std::string ns = p->get_namespace("rb");
+    if(gen_eventmachine) {
+      std::string eventmachine_ns = p->get_namespace("rb.eventmachine");
+      if(!eventmachine_ns.empty()){
+        ns = eventmachine_ns;
+      }
+    }
+
     std::vector<std::string> modules;
     if (ns.empty()) {
       return modules;
@@ -247,13 +257,13 @@ void t_rb_generator::init_generator() {
   f_types_ <<
     rb_autogen_comment() << endl <<
     render_includes() << endl;
-    begin_namespace(f_types_, ruby_modules(program_));
+    begin_namespace(f_types_, ruby_modules(program_, gen_eventmachine_));
 
   f_consts_ <<
     rb_autogen_comment() << endl <<
     "require '" << underscore(program_name_) << "_types'" << endl <<
     endl;
-    begin_namespace(f_consts_, ruby_modules(program_));
+    begin_namespace(f_consts_, ruby_modules(program_, gen_eventmachine_));
 
 }
 
@@ -289,8 +299,8 @@ string t_rb_generator::rb_autogen_comment() {
  */
 void t_rb_generator::close_generator() {
   // Close types file
-  end_namespace(f_types_, ruby_modules(program_));
-  end_namespace(f_consts_, ruby_modules(program_));
+  end_namespace(f_types_, ruby_modules(program_, gen_eventmachine_));
+  end_namespace(f_consts_, ruby_modules(program_, gen_eventmachine_));
   f_types_.close();
   f_consts_.close();
 }
@@ -724,7 +734,7 @@ void t_rb_generator::generate_service(t_service* tservice) {
     "require '" << underscore(program_name_) << "_types'" << endl <<
     endl;
 
-  begin_namespace(f_service_, ruby_modules(tservice->get_program()));
+  begin_namespace(f_service_, ruby_modules(tservice->get_program(), gen_eventmachine_));
 
   indent(f_service_) << "module " << capitalize(tservice->get_name()) << endl;
   indent_up();
@@ -738,7 +748,7 @@ void t_rb_generator::generate_service(t_service* tservice) {
   indent(f_service_) << "end" << endl <<
     endl;
 
-  end_namespace(f_service_, ruby_modules(tservice->get_program()));
+  end_namespace(f_service_, ruby_modules(tservice->get_program(), gen_eventmachine_));
 
   // Close service file
   f_service_.close();
@@ -1159,7 +1169,7 @@ string t_rb_generator::type_name(t_type* ttype) {
 
 string t_rb_generator::full_type_name(t_type* ttype) {
   string prefix = "";
-  vector<std::string> modules = ruby_modules(ttype->get_program());
+  vector<std::string> modules = ruby_modules(ttype->get_program(), gen_eventmachine_);
   for (vector<std::string>::iterator m_iter = modules.begin();
        m_iter != modules.end(); ++m_iter) {
     prefix += *m_iter + "::";
