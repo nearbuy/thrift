@@ -135,5 +135,40 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
       end
     end
 
+    it "should set oneway functions to success state immediately" do
+      tick_count = 0
+      # track tick count so we can say if something happened in the same
+      # loop iteration
+      next_tick_inc = proc do
+        tick_count += 1
+        EM.next_tick(next_tick_inc)
+      end
+      EM.run do
+        EM.next_tick(next_tick_inc)
+        client_class = SpecEventMachineNamespace::NonblockingService::Client
+        con = Thrift::EventMachineTransport.connect(client_class, 'localhost', @port)
+        con.callback do |client|
+          testcount = 2
+
+          done = lambda do
+            testcount -= 1
+            EM.stop_event_loop if testcount == 0
+          end
+
+          unblock_loop_count = tick_count
+          client.unblock(1).callback do
+            tick_count.should == unblock_loop_count
+            done.call
+          end
+
+          block_loop_count = tick_count
+          client.block.callback do
+            tick_count.should > block_loop_count
+            done.call
+          end
+        end
+      end
+    end
+
   end
 end
