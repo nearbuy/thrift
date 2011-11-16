@@ -183,5 +183,25 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
       end
     end
 
+    it "should trigger connection error callback on failed connections" do
+      callback_called = false
+      errback_called = false
+      EM.run do
+        client_class = SpecEventMachineNamespace::NonblockingService::Client
+        con = Thrift::EventMachineTransport.connect(client_class, 'localhost', @port + 1)
+        con.callback do
+          # this code should not be hit
+          callback_called = true
+          EM.stop_event_loop
+        end
+        con.errback do
+          errback_called = true
+          EM.stop_event_loop
+        end
+      end
+      callback_called.should == false
+      errback_called.should == true
+    end
+
   end
 end

@@ -76,6 +76,12 @@ module Thrift
       set_deferred_status :succeeded, @client
     end
 
+    def unbind
+      if !@connected
+        set_deferred_status :failed
+      end
+    end
+
     def initialize(args={})
       @client_class = args[:client_class]
       super
