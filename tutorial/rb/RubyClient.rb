@@ -29,7 +29,7 @@ require 'calculator'
 begin
   port = ARGV[0] || 9090
 
-  transport = Thrift::BufferedTransport.new(Thrift::Socket.new('localhost', port))
+  transport = Thrift::FramedTransport.new(Thrift::Socket.new('localhost', port))
   protocol = Thrift::BinaryProtocol.new(transport)
   client = Calculator::Client.new(protocol)
 

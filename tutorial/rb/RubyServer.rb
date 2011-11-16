@@ -87,7 +87,7 @@ end
 handler = CalculatorHandler.new()
 processor = Calculator::Processor.new(handler)
 transport = Thrift::ServerSocket.new(9090)
-transportFactory = Thrift::BufferedTransportFactory.new()
+transportFactory = Thrift::FramedTransportFactory.new()
 server = Thrift::SimpleServer.new(processor, transport, transportFactory)
 
 puts "Starting the server..."
