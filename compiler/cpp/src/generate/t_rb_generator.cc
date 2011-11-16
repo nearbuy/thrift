@@ -835,7 +835,7 @@ void t_rb_generator::generate_service_client(t_service* tservice) {
         indent(f_service_) << "@seqid += 1" << endl;
         if (!(*f_iter)->is_oneway()) {
           indent(f_service_) <<
-            "d = @callbacks[@seqid] = @deferrable_class.new" << endl;
+            "d = @callbacks[@seqid] = deferrable" << endl;
         }
       }
 
@@ -867,7 +867,7 @@ void t_rb_generator::generate_service_client(t_service* tservice) {
       } else {
         if (gen_eventmachine_) {
           f_service_ <<
-            indent() << "d = @deferrable_class.new" << endl;
+            indent() << "d = deferrable" << endl;
           f_service_ <<
             indent() << "d.succeed" << endl;
           f_service_ <<

@@ -17,6 +17,24 @@
 # under the License.
 #
 
+if EventMachine::Deferrable.instance_method(:timeout).arity > 0
+  # Monkey patch eventmachine deferrable.timeout to take *args which
+  # are passed to the errback
+  #
+  # This is taken from >= 1.0 versions of eventmachine, thus the check
+  # above to only do this if the existing timeout method doesn't take *args
+  module EventMachine
+    module Deferrable
+      def timeout seconds, *args
+        cancel_timeout
+        me = self
+        @deferred_timeout = EventMachine::Timer.new(seconds) {me.fail(*args)}
+        self
+      end
+    end
+  end
+end
+
 module Thrift
   class EventMachineFramedReader
     def initialize
@@ -62,8 +80,9 @@ module Thrift
   class EventMachineTransport < EventMachine::Connection
     include EventMachine::Deferrable
 
-    def self.connect(client_class, host, port)
-      EM.connect(host, port, self, :client_class => client_class)
+    def self.connect(client_class, host, port, args={})
+      args[:client_class] = client_class
+      EM.connect(host, port, self, args)
     end
 
     def connection_completed
@@ -72,7 +91,7 @@ module Thrift
       writer = Thrift::FramedTransport.new(self, false)
       @oprot = Thrift::BinaryProtocol.new(writer)
 
-      @client = @client_class.new(@oprot)
+      @client = @client_class.new(@oprot, method(:deferrable))
       set_deferred_status :succeeded, @client
     end
 
@@ -84,6 +103,8 @@ module Thrift
 
     def initialize(args={})
       @client_class = args[:client_class]
+      @default_timeout = args[:timeout]
+      @raise_on_timeout = args[:raise_on_timeout]
       super
     end
 
@@ -99,12 +120,24 @@ module Thrift
       end
     end
 
+    def deferrable
+      d = EventMachine::DefaultDeferrable.new
+      if @default_timeout
+        d.timeout(@default_timeout, :timeout)
+      end
+      return d
+    end
+
     # transport methods
     def write(data)
       send_data(data)
     end
 
     def flush
+    end
+
+    def close
+      close_connection
     end
   end
 end

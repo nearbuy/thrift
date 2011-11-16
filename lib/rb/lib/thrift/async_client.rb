@@ -19,12 +19,11 @@
 
 module Thrift
   module AsyncClient
-    def initialize(iprot, oprot=nil, deferrable_class=EventMachine::DefaultDeferrable)
-      @iprot = iprot
-      @oprot = oprot || iprot
+    def initialize(oprot, deferrable_generator)
+      @oprot = oprot
       @seqid = -1
       @callbacks = {}
-      @deferrable_class = deferrable_class
+      @deferrable_generator = deferrable_generator
     end
 
     def send_message(name, args_class, args = {})
@@ -41,6 +40,10 @@ module Thrift
       end
       @oprot.write_message_end
       @oprot.trans.flush
+    end
+
+    def deferrable
+      return @deferrable_generator.call
     end
   end
 end

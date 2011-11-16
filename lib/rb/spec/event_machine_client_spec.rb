@@ -59,6 +59,7 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
 
   describe Thrift::EventMachineTransport do
     before(:each) do
+      @client_class = SpecEventMachineNamespace::NonblockingService::Client
       @port = 9913
       handler = Handler.new
       processor = SpecEventMachineNamespace::NonblockingService::Processor.new(handler)
@@ -79,6 +80,10 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
       end
     end
 
+    def connect(args={})
+      return Thrift::EventMachineTransport.connect(@client_class, 'localhost', @port, args)
+    end
+
     after(:each) do
       @server.shutdown
       @server_thread.kill
@@ -87,8 +92,7 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
 
     it "should handle basic message passing" do
       EM.run do
-        client_class = SpecEventMachineNamespace::NonblockingService::Client
-        con = Thrift::EventMachineTransport.connect(client_class, 'localhost', @port)
+        con = connect
         con.callback do |client|
           testcount = 2
           done = lambda {
@@ -109,8 +113,7 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
 
     it "should process events asynchronously" do
       EM.run do
-        client_class = SpecEventMachineNamespace::NonblockingService::Client
-        con = Thrift::EventMachineTransport.connect(client_class, 'localhost', @port)
+        con = connect
         con.callback do |client|
           testcount = 3
           order = []
@@ -137,8 +140,7 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
 
     it "should not return any values for void functions" do
       EM.run do
-        client_class = SpecEventMachineNamespace::NonblockingService::Client
-        con = Thrift::EventMachineTransport.connect(client_class, 'localhost', @port)
+        con = connect
         con.callback do |client|
           client.sleep(0.1).callback do |a|
             a.should == nil
@@ -158,8 +160,7 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
       end
       EM.run do
         EM.next_tick(next_tick_inc)
-        client_class = SpecEventMachineNamespace::NonblockingService::Client
-        con = Thrift::EventMachineTransport.connect(client_class, 'localhost', @port)
+        con = connect
         con.callback do |client|
           testcount = 2
 
@@ -187,8 +188,7 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
       callback_called = false
       errback_called = false
       EM.run do
-        client_class = SpecEventMachineNamespace::NonblockingService::Client
-        con = Thrift::EventMachineTransport.connect(client_class, 'localhost', @port + 1)
+        con = Thrift::EventMachineTransport.connect(@client_class, 'localhost', @port + 1)
         con.callback do
           # this code should not be hit
           callback_called = true
@@ -203,5 +203,33 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
       errback_called.should == true
     end
 
+    it "should respect default timeouts" do
+      normal_cb_called = false
+      timeout_cb_called = false
+      EM.run do
+        testcount = 2
+
+        done = lambda do
+          testcount -= 1
+          EM.stop_event_loop if testcount == 0
+        end
+
+        con = connect(:timeout => 0.3)
+        con.callback do |client|
+          client.sleep(0.1).callback do
+            normal_cb_called = true
+            done.call
+          end
+
+          client.sleep(0.5).errback do |type|
+            type.should == :timeout
+            timeout_cb_called = true
+            done.call
+          end
+        end
+      end
+      normal_cb_called.should == true
+      timeout_cb_called.should == true
+    end
   end
 end
