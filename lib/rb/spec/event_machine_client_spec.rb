@@ -71,7 +71,7 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
       @server = Thrift::NonblockingServer.new(processor, @transport, transport_factory, nil, 5, logger)
       handler.server = @server
       server_started = false
-      @server_thread = Thread.new do |master_thread|
+      @server_thread = Thread.new do
         server_started = true
         @server.serve
       end
@@ -142,8 +142,11 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
       EM.run do
         con = connect
         con.callback do |client|
+          orig_verbose = $VERBOSE
+          $VERBOSE = nil #suppress warnings in ruby 1.8
           client.sleep(0.1).callback do |a|
             a.should == nil
+            $VERBOSE = orig_verbose
             EM.stop_event_loop
           end
         end
