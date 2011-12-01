@@ -45,5 +45,11 @@ module Thrift
     def deferrable
       return @deferrable_generator.call
     end
+
+    def disconnect!
+      @callbacks.values.each do |d|
+        d.fail(TransportException.new(TransportException::NOT_OPEN))
+      end
+    end
   end
 end

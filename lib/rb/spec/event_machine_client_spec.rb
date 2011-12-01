@@ -30,8 +30,6 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
       @queue = Queue.new
     end
 
-    attr_accessor :server
-
     def greeting(english)
       if english
         SpecEventMachineNamespace::Hello.new
@@ -51,33 +49,27 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
     def sleep(time)
       Kernel.sleep time
     end
-
-    def shutdown
-      @server.shutdown(0, false)
-    end
   end
 
   describe Thrift::EventMachineTransport do
     before(:each) do
       @client_class = SpecEventMachineNamespace::NonblockingService::Client
-      @port = 9913
-      handler = Handler.new
-      processor = SpecEventMachineNamespace::NonblockingService::Processor.new(handler)
+      @port = port = 9913
 
-      @transport = Thrift::ServerSocket.new('localhost', @port)
-      transport_factory = Thrift::FramedTransportFactory.new
-      logger = Logger.new(STDERR)
-      logger.level = Logger::WARN
-      @server = Thrift::NonblockingServer.new(processor, @transport, transport_factory, nil, 5, logger)
-      handler.server = @server
-      server_started = false
-      @server_thread = Thread.new do
-        server_started = true
-        @server.serve
+      @server_pid = Process.fork do
+        Signal.trap("INT") { exit }
+        handler = Handler.new
+        processor = SpecEventMachineNamespace::NonblockingService::Processor.new(handler)
+
+        transport = Thrift::ServerSocket.new('localhost', port)
+        transport_factory = Thrift::FramedTransportFactory.new
+        logger = Logger.new(STDERR)
+        logger.level = Logger::WARN
+
+        server = Thrift::NonblockingServer.new(processor, transport, transport_factory, nil, 5, logger)
+        server.serve
       end
-      while !server_started
-        sleep 0.1 #make sure the server has started before trying to connect
-      end
+      sleep 0.1
     end
 
     def connect(args={})
@@ -85,9 +77,8 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
     end
 
     after(:each) do
-      @server.shutdown
-      @server_thread.kill
-      @transport.close
+      Process.kill("INT", @server_pid)
+      Process.wait
     end
 
     it "should handle basic message passing" do
@@ -234,5 +225,46 @@ class ThriftEventMachineClientSpec < Spec::ExampleGroup
       normal_cb_called.should == true
       timeout_cb_called.should == true
     end
+
+    it "should trigger method errors when the connection is closed" do
+      events = []
+
+      EM.run do
+        testcount = 3
+        done = lambda do
+          testcount -= 1
+          EM.stop_event_loop if testcount == 0
+        end
+
+        con = connect
+        con.callback do |client|
+          d = client.sleep(0.1)
+          d.callback do
+            events << 'sleep 0.1 callback'
+            Process.kill("INT", @server_pid)
+            done.call
+          end
+
+          d2 = client.sleep(0.5)
+          d2.errback do |err|
+            err.class.should == Thrift::TransportException
+            err.type.should == Thrift::TransportException::NOT_OPEN
+            events << 'sleep 0.5 errback'
+            done.call
+
+            # any new requests on a closed connection should error
+            d3 = client.greeting(true)
+            d3.errback do |err|
+              events << 'greeting errback'
+              err.class.should == Thrift::TransportException
+              err.type.should == Thrift::TransportException::NOT_OPEN
+              done.call
+            end
+          end
+        end
+      end
+      events.should == ['sleep 0.1 callback', 'sleep 0.5 errback', 'greeting errback']
+    end
+
   end
 end

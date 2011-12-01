@@ -97,14 +97,17 @@ module Thrift
 
     def unbind
       if !@connected
-        set_deferred_status :failed
+        set_deferred_status :failed, TransportException.new(TransportException::NOT_OPEN)
+      end
+      @connected = false
+      if @client
+        @client.disconnect!
       end
     end
 
     def initialize(args={})
       @client_class = args[:client_class]
       @default_timeout = args[:timeout]
-      @raise_on_timeout = args[:raise_on_timeout]
       super
     end
 
@@ -124,6 +127,9 @@ module Thrift
       d = EventMachine::DefaultDeferrable.new
       if @default_timeout
         d.timeout(@default_timeout, :timeout)
+      end
+      if !@connected
+        d.fail(TransportException.new(TransportException::NOT_OPEN))
       end
       return d
     end
