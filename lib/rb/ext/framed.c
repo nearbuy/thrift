@@ -109,10 +109,10 @@ VALUE rb_thrift_framed_read_into_buffer(VALUE self, VALUE buffer_value, VALUE si
 }
 
 void Init_framed() {
-  /* VALUE thrift_framed_class = rb_const_get(thrift_module, rb_intern("FramedTransport")); */
-  /* rb_define_method(thrift_framed_class, "read", rb_thrift_framed_read, 1); */
-  /* rb_define_method(thrift_framed_class, "read_byte", rb_thrift_framed_read_byte, 0); */
-  /* rb_define_method(thrift_framed_class, "read_into_buffer", rb_thrift_framed_read_into_buffer, 2); */
+  VALUE thrift_framed_class = rb_const_get(thrift_module, rb_intern("FramedTransport"));
+  rb_define_method(thrift_framed_class, "read", rb_thrift_framed_read, 1);
+  rb_define_method(thrift_framed_class, "read_byte", rb_thrift_framed_read_byte, 0);
+  rb_define_method(thrift_framed_class, "read_into_buffer", rb_thrift_framed_read_into_buffer, 2);
 
   rbuf_ivar_id = rb_intern("@rbuf");
   framed_index_ivar_id = rb_intern("@index");
