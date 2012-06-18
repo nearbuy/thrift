@@ -1,4 +1,4 @@
-# 
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements. See the NOTICE file
 # distributed with this work for additional information
@@ -6,35 +6,25 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License. You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 # KIND, either express or implied. See the License for the
 # specific language governing permissions and limitations
 # under the License.
-# 
+#
 
 require 'set'
 
 module Thrift
   module Struct
-    def initialize(d={}, &block)
-      # get a copy of the default values to work on, removing defaults in favor of arguments
-      fields_with_defaults = fields_with_default_values.dup
-      
-      # check if the defaults is empty, or if there are no parameters for this 
-      # instantiation, and if so, don't bother overriding defaults.
-      unless fields_with_defaults.empty? || d.empty?
-        d.each_key do |name|
-          fields_with_defaults.delete(name.to_s)
-        end
-      end
-      
-      # assign all the user-specified arguments
-      unless d.empty?
+    def initialize(d=nil, &block)
+      set_defaults
+
+      unless d.nil?
         d.each do |name, value|
           unless name_to_id(name.to_s)
             raise Exception, "Unknown key given to #{self.class}.new: #{name}"
@@ -43,31 +33,35 @@ module Thrift
           instance_variable_set("@#{name}", value)
         end
       end
-      
-      # assign all the default values
-      unless fields_with_defaults.empty?
-        fields_with_defaults.each do |name, default_value|
-          instance_variable_set("@#{name}", (default_value.dup rescue default_value))
-        end
-      end
-      
+
       yield self if block_given?
     end
 
-    def fields_with_default_values
-      fields_with_default_values = self.class.instance_variable_get(:@fields_with_default_values)
-      unless fields_with_default_values
+    def set_defaults
+      setter = self.class.instance_variable_get(:@fields_with_default_values_setter)
+      unless setter
         fields_with_default_values = {}
         struct_fields.each do |fid, field_def|
           unless field_def[:default].nil?
             fields_with_default_values[field_def[:name]] = field_def[:default]
           end
         end
-        self.class.instance_variable_set(:@fields_with_default_values, fields_with_default_values)
+
+        if fields_with_default_values.empty?
+          setter = lambda {}
+        else
+          setter = lambda do
+            fields_with_default_values.each do |name, value|
+              instance_variable_set("@#{name}", (value.dup rescue value))
+            end
+          end
+        end
+        self.class.instance_variable_set(:@fields_with_default_values_setter, setter)
       end
-      fields_with_default_values
+
+      setter.call
     end
-    
+
     def inspect(skip_optional_nulls = true)
       fields = []
       each_field do |fid, field_info|

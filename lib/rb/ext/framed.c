@@ -29,7 +29,6 @@ ID read_ivar_id;
 ID read_frame_method_id;
 ID read_method_id;
 ID framed_read_byte_method_id;
-ID framed_slice_method_id;
 
 #define GET_RBUF(self) rb_ivar_get(self, rbuf_ivar_id)
 
@@ -57,10 +56,9 @@ VALUE rb_thrift_framed_read(VALUE self, VALUE length_value) {
     rbuf = GET_RBUF(self);
   }
 
-  index += length;
-  rb_ivar_set(self, framed_index_ivar_id, INT2FIX(index));
-
-  return rb_funcall(rbuf, framed_slice_method_id, 2, INT2FIX(index-length), length_value);
+  VALUE ret = rb_str_new(RSTRING_PTR(rbuf)+index, length);
+  rb_ivar_set(self, framed_index_ivar_id, INT2FIX(index+length));
+  return ret;
 }
 
 VALUE rb_thrift_framed_read_byte(VALUE self) {
@@ -122,5 +120,4 @@ void Init_framed() {
   read_method_id = rb_intern("read");
   read_frame_method_id = rb_intern("read_frame");
   framed_read_byte_method_id = rb_intern("read_byte");
-  framed_slice_method_id = rb_intern("slice");
 }
