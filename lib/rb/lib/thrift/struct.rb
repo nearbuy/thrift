@@ -24,7 +24,7 @@ module Thrift
     def initialize(d=nil, &block)
       set_defaults
 
-      unless d.nil?
+      if d
         d.each do |name, value|
           unless name_to_id(name.to_s)
             raise Exception, "Unknown key given to #{self.class}.new: #{name}"
@@ -34,12 +34,12 @@ module Thrift
         end
       end
 
-      yield self if block_given?
+      yield self if block
     end
 
     def set_defaults
-      setter = self.class.instance_variable_get(:@fields_with_default_values_setter)
-      unless setter
+      klass = self.class
+      unless klass.instance_variable_defined?(:@fields_with_default_values)
         fields_with_default_values = {}
         struct_fields.each do |fid, field_def|
           unless field_def[:default].nil?
@@ -47,19 +47,17 @@ module Thrift
           end
         end
 
-        if fields_with_default_values.empty?
-          setter = lambda {}
-        else
-          setter = lambda do
-            fields_with_default_values.each do |name, value|
-              instance_variable_set("@#{name}", (value.dup rescue value))
-            end
-          end
-        end
-        self.class.instance_variable_set(:@fields_with_default_values_setter, setter)
+        field_with_default_values = nil if fields_with_default_values.empty?
+        klass.instance_variable_set(:@fields_with_default_values, fields_with_default_values)
+      else
+        field_with_default_values = klass.instance_variable_get(:@fields_with_default_values)
       end
 
-      setter.call
+      if fields_with_default_values
+        fields_with_default_values.each do |name, value|
+          instance_variable_set("@#{name}", (value.dup rescue value))
+        end
+      end
     end
 
     def inspect(skip_optional_nulls = true)
