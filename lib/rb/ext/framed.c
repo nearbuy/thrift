@@ -37,7 +37,6 @@ VALUE rb_thrift_framed_read_byte(VALUE self);
 VALUE rb_thrift_framed_read_into_buffer(VALUE self, VALUE buffer_value, VALUE size_value);
 
 VALUE rb_thrift_framed_read(VALUE self, VALUE length_value) {
-  int i;
   int length = FIX2INT(length_value);
   int read = rb_ivar_get(self, read_ivar_id) == Qtrue;
   int index = FIX2INT(rb_ivar_get(self, framed_index_ivar_id));
@@ -57,11 +56,8 @@ VALUE rb_thrift_framed_read(VALUE self, VALUE length_value) {
     rbuf = GET_RBUF(self);
   }
 
-  VALUE ret = rb_str_new("", length);
-  for (i = 0; i < length; i++) {
-    ((char *)RSTRING_PTR(ret))[i] = ((char *)RSTRING_PTR(rbuf))[index+i];
+  VALUE ret = rb_str_new(RSTRING_PTR(rbuf)+index, length);
 
-  }
   rb_ivar_set(self, framed_index_ivar_id, INT2FIX(index+length));
   return ret;
 }
