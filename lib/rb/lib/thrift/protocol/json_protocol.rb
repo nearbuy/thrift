@@ -1,4 +1,4 @@
-# 
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements. See the NOTICE file
 # distributed with this work for additional information
@@ -6,32 +6,32 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License. You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 # KIND, either express or implied. See the License for the
 # specific language governing permissions and limitations
 # under the License.
-# 
+#
 
-@@kJSONObjectStart = '{'
-@@kJSONObjectEnd = '}'
-@@kJSONArrayStart = '['
-@@kJSONArrayEnd = ']'
-@@kJSONNewline = '\n'
-@@kJSONElemSeparator = ','
-@@kJSONPairSeparator = ':'
-@@kJSONBackslash = '\\'
-@@kJSONStringDelimiter = '"'
+KJSONObjectStart = '{'
+KJSONObjectEnd = '}'
+KJSONArrayStart = '['
+KJSONArrayEnd = ']'
+KJSONNewline = '\n'
+KJSONElemSeparator = ','
+KJSONPairSeparator = ':'
+KJSONBackslash = '\\'
+KJSONStringDelimiter = '"'
 
-@@kThriftVersion1 = 1
+KThriftVersion1 = 1
 
-@@kThriftNan = "NaN"
-@@kThriftInfinity = "Infinity"
-@@kThriftNegativeInfinity = "-Infinity"
+KThriftNan = "NaN"
+KThriftInfinity = "Infinity"
+KThriftNegativeInfinity = "-Infinity"
 
 module Thrift
   class LookaheadReader
@@ -98,7 +98,7 @@ module Thrift
         @first = false
         @colon = true
       else
-        trans.write(@colon ? @@kJSONPairSeparator : @@kJSONElemSeparator)
+        trans.write(@colon ? KJSONPairSeparator : KJSONElemSeparator)
         @colon = !@colon
       end
     end
@@ -108,7 +108,7 @@ module Thrift
         @first = false
         @colon = true
       else
-        ch = (@colon ? @@kJSONPairSeparator : @@kJSONElemSeparator)
+        ch = (@colon ? KJSONPairSeparator : KJSONElemSeparator)
         @colon = !@colon
         JsonProtocol::read_syntax_char(reader, ch)
       end
@@ -131,7 +131,7 @@ module Thrift
       if (@first)
         @first = false
       else
-        trans.write(@@kJSONElemSeparator)
+        trans.write(KJSONElemSeparator)
       end
     end
 
@@ -139,7 +139,7 @@ module Thrift
       if (@first)
         @first = false
       else
-        JsonProtocol::read_syntax_char(reader, @@kJSONElemSeparator)
+        JsonProtocol::read_syntax_char(reader, KJSONElemSeparator)
       end
     end
   end
@@ -271,9 +271,9 @@ module Thrift
         ch_value = ch.bytes.first
       end
       if (ch_value >= 0x30)
-        if (ch == @@kJSONBackslash) # Only special character >= 0x30 is '\'
-          trans.write(@@kJSONBackslash)
-          trans.write(@@kJSONBackslash)
+        if (ch == KJSONBackslash) # Only special character >= 0x30 is '\'
+          trans.write(KJSONBackslash)
+          trans.write(KJSONBackslash)
         else
           trans.write(ch)
         end
@@ -281,7 +281,7 @@ module Thrift
         outCh = kJSONCharTable[ch_value];
         # Check if regular character, backslash escaped, or JSON escaped
         if outCh.kind_of? String
-          trans.write(@@kJSONBackslash)
+          trans.write(KJSONBackslash)
           trans.write(outCh)
         elsif outCh == 1
           trans.write(ch)
@@ -294,20 +294,20 @@ module Thrift
     # Write out the contents of the string str as a JSON string, escaping characters as appropriate.
     def write_json_string(str)
       @context.write(trans)
-      trans.write(@@kJSONStringDelimiter)
+      trans.write(KJSONStringDelimiter)
       str.split('').each do |ch|
         write_json_char(ch)
       end
-      trans.write(@@kJSONStringDelimiter)
+      trans.write(KJSONStringDelimiter)
     end
 
     # Write out the contents of the string as JSON string, base64-encoding
     # the string's contents, and escaping as appropriate
     def write_json_base64(str)
       @context.write(trans)
-      trans.write(@@kJSONStringDelimiter)
+      trans.write(KJSONStringDelimiter)
       write_json_string([str].pack("m"))
-      trans.write(@@kJSONStringDelimiter)
+      trans.write(KJSONStringDelimiter)
     end
 
     # Convert the given integer type to a JSON number, or a string
@@ -316,11 +316,11 @@ module Thrift
       @context.write(trans)
       escapeNum = @context.escapeNum
       if (escapeNum)
-        trans.write(@@kJSONStringDelimiter)
+        trans.write(KJSONStringDelimiter)
       end
       trans.write(num.to_s);
       if (escapeNum)
-        trans.write(@@kJSONStringDelimiter)
+        trans.write(KJSONStringDelimiter)
       end
     end
 
@@ -332,12 +332,12 @@ module Thrift
       special = false;
       if (num.nan?)
         special = true;
-        val = @@kThriftNan;
+        val = KThriftNan;
       elsif (num.infinite?)
         special = true;
-        val = @@kThriftInfinity;
+        val = KThriftInfinity;
         if (num < 0.0)
-          val = @@kThriftNegativeInfinity;
+          val = KThriftNegativeInfinity;
         end
       else
         val = num.to_s
@@ -345,39 +345,39 @@ module Thrift
 
       escapeNum = special || @context.escapeNum
       if (escapeNum)
-        trans.write(@@kJSONStringDelimiter)
+        trans.write(KJSONStringDelimiter)
       end
       trans.write(val)
       if (escapeNum)
-        trans.write(@@kJSONStringDelimiter)
+        trans.write(KJSONStringDelimiter)
       end
     end
 
     def write_json_object_start
       @context.write(trans)
-      trans.write(@@kJSONObjectStart)
+      trans.write(KJSONObjectStart)
       push_context(JSONPairContext.new);
     end
 
     def write_json_object_end
       pop_context
-      trans.write(@@kJSONObjectEnd)
+      trans.write(KJSONObjectEnd)
     end
 
     def write_json_array_start
       @context.write(trans)
-      trans.write(@@kJSONArrayStart)
+      trans.write(KJSONArrayStart)
       push_context(JSONListContext.new);
     end
 
     def write_json_array_end
       pop_context
-      trans.write(@@kJSONArrayEnd)
+      trans.write(KJSONArrayEnd)
     end
 
     def write_message_begin(name, type, seqid)
       write_json_array_start
-      write_json_integer(@@kThriftVersion1)
+      write_json_integer(KThriftVersion1)
       write_json_string(name)
       write_json_integer(type)
       write_json_integer(seqid)
@@ -507,15 +507,15 @@ module Thrift
       if !skipContext
         @context.read(@reader)
       end
-      read_json_syntax_char(@@kJSONStringDelimiter)
+      read_json_syntax_char(KJSONStringDelimiter)
       ch = ""
       str = ""
       while (true)
         ch = @reader.read
-        if (ch == @@kJSONStringDelimiter)
+        if (ch == KJSONStringDelimiter)
           break
         end
-        if (ch == @@kJSONBackslash)
+        if (ch == KJSONBackslash)
           ch = @reader.read
           if (ch == 'u')
             ch = read_json_escape_char
@@ -557,7 +557,7 @@ module Thrift
     def read_json_integer
       @context.read(@reader)
       if (@context.escapeNum)
-        read_json_syntax_char(@@kJSONStringDelimiter)
+        read_json_syntax_char(KJSONStringDelimiter)
       end
       str = read_json_numeric_chars
 
@@ -568,7 +568,7 @@ module Thrift
       end
 
       if (@context.escapeNum)
-        read_json_syntax_char(@@kJSONStringDelimiter)
+        read_json_syntax_char(KJSONStringDelimiter)
       end
 
       return num
@@ -578,14 +578,14 @@ module Thrift
     def read_json_double
       @context.read(@reader)
       num = 0
-      if (@reader.peek == @@kJSONStringDelimiter)
+      if (@reader.peek == KJSONStringDelimiter)
         str = read_json_string(true)
         # Check for NaN, Infinity and -Infinity
-        if (str == @@kThriftNan)
+        if (str == KThriftNan)
           num = (+1.0/0.0)/(+1.0/0.0)
-        elsif (str == @@kThriftInfinity)
+        elsif (str == KThriftInfinity)
           num = +1.0/0.0
-        elsif (str == @@kThriftNegativeInfinity)
+        elsif (str == KThriftNegativeInfinity)
           num = -1.0/0.0
         else
           if (!@context.escapeNum)
@@ -601,7 +601,7 @@ module Thrift
       else
         if (@context.escapeNum)
           # This will throw - we should have had a quote if escapeNum == true
-          read_json_syntax_char(@@kJSONStringDelimiter)
+          read_json_syntax_char(KJSONStringDelimiter)
         end
         str = read_json_numeric_chars
         begin
@@ -615,26 +615,26 @@ module Thrift
 
     def read_json_object_start
       @context.read(@reader)
-      read_json_syntax_char(@@kJSONObjectStart)
+      read_json_syntax_char(KJSONObjectStart)
       push_context(JSONPairContext.new)
       nil
     end
 
     def read_json_object_end
-      read_json_syntax_char(@@kJSONObjectEnd)
+      read_json_syntax_char(KJSONObjectEnd)
       pop_context
       nil
     end
 
     def read_json_array_start
       @context.read(@reader)
-      read_json_syntax_char(@@kJSONArrayStart)
+      read_json_syntax_char(KJSONArrayStart)
       push_context(JSONListContext.new)
       nil
     end
 
     def read_json_array_end
-      read_json_syntax_char(@@kJSONArrayEnd)
+      read_json_syntax_char(KJSONArrayEnd)
       pop_context
       nil
     end
@@ -642,7 +642,7 @@ module Thrift
     def read_message_begin
       read_json_array_start
       version = read_json_integer
-      if (version != @@kThriftVersion1)
+      if (version != KThriftVersion1)
         raise ProtocolException.new(ProtocolException::BAD_VERSION, 'Message contained bad version.')
       end
       name = read_json_string
@@ -669,7 +669,7 @@ module Thrift
     def read_field_begin
       # Check if we hit the end of the list
       ch = @reader.peek
-      if (ch == @@kJSONObjectEnd)
+      if (ch == KJSONObjectEnd)
         field_type = Types::STOP
       else
         field_id = read_json_integer
